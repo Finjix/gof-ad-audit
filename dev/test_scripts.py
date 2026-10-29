@@ -95,6 +95,17 @@ class Frames(unittest.TestCase):
             self.assertNotEqual(run("frames", video, "--fps", "30", "--max-frames", "10").returncode, 0, "too many frames are refused")
 
 
+    def test_probe_tells_the_plan_length_sound_and_key_without_calling_gemini(self):
+        with tempfile.TemporaryDirectory() as d:
+            video = os.path.join(d, "v.mp4")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=30:duration=2",
+                            "-pix_fmt", "yuv420p", video], check=True)
+            out = run("analyze_video", video, "--probe", env={"WINKY_API_KEY": "x"})
+            self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+            info = json.loads(out.stdout)
+            self.assertEqual((info["duration"], info["audio"], info["winky_key"]), (2.0, False, True))
+
+
 class WorkDir(unittest.TestCase):
     def test_under_lark_agent_the_work_goes_to_the_users_own_folder_and_old_work_is_removed(self):
         with tempfile.TemporaryDirectory() as user:

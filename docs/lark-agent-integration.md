@@ -36,4 +36,4 @@ start.cmd
 - 本机（2026-10-29）：插件结构检查、`python -m unittest discover -s dev`（含用 ffmpeg 生成的测试视频抽帧）、`feishu.py` 在 Codex 插件缓存的布局里找到 feishu 插件。
 - lark-agent 安装：见 lark-agent 的提交记录和 `/health`。
 
-没有验证：真实模型回合里走一遍完整审核（需要真实素材和 Winky key；这台电脑目前没有 Winky key）。
+没有验证：真实模型回合里走一遍完整审核（需要真实素材和 Winky key）。

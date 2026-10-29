@@ -5,6 +5,7 @@ analyze_video.py — 经公司 Winky 代理调 Gemini 真·看视频(画面+声�
 用法:
   python3 analyze_video.py <视频> --model gemini-4-argon --keep-audio --prompt-file ../references/video_prompt.md > report.md
   可选 --start S --end E 只看一段;--fps / --low-res 手动控制采样
+  python3 analyze_video.py <视频> --probe    定计划用,不联网:时长、有没有音轨、有没有 Winky key
 
 依赖: Python 3.8+ 标准库 + ffmpeg/ffprobe(压缩、截段用)。certifi 可选。
 Key(Winky/Lumos key,按顺序找,找到即用):
@@ -47,7 +48,7 @@ ANALYSIS_PROMPT = """你是顶级影视分析师 + AI视频提示词专家。请
 
 请具体、可操作。这份报告会直接用于撰写复现该视频的 AI 视频提示词(Seedance/可灵/Midjourney)。"""
 
-def get_key():
+def find_key():
     if os.environ.get("WINKY_API_KEY"):
         return os.environ["WINKY_API_KEY"].strip()
     if os.path.isfile(KEY_FILE):
@@ -61,6 +62,12 @@ def get_key():
         k = cfg.get("env", {}).get("ANTHROPIC_API_KEY") or cfg.get("ANTHROPIC_API_KEY")
         if k:
             return k
+    return None
+
+def get_key():
+    k = find_key()
+    if k:
+        return k
     print("错误: 找不到 Winky key。把 key 写进 ~/.config/winky/key(一行),或设环境变量 WINKY_API_KEY。")
     print("没有 key 就跳过本脚本,改用 frames.py 抽帧自己看(听不到声音,口播要另找字幕或脚本)。")
     sys.exit(4)
@@ -99,6 +106,23 @@ def probe_duration(path):
         return float(out.stdout.strip())
     except Exception:
         return None
+
+def has_audio(path):
+    try:
+        out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
+                              "-of", "csv=p=0", path], capture_output=True, text=True, check=True)
+        return bool(out.stdout.strip())
+    except Exception:
+        return None
+
+def probe(path):
+    """审核前定计划用:时长、有没有音轨、有没有 Winky key、会怎么采样。不联网。"""
+    duration = probe_duration(path)
+    return {"duration": round(duration, 1) if duration else None,
+            "size_mb": round(os.path.getsize(path) / 1024 / 1024, 1),
+            "audio": has_audio(path),
+            "winky_key": bool(find_key()),
+            "sampling": plan_sampling(duration, None, None)[2]}
 
 def trim(src, start, end):
     """切出 [start, end) 一段重编码(不用 -c copy,那样只能切在关键帧上)。"""
@@ -189,9 +213,13 @@ def main():
                     help="关掉高分辨率采样(约 66 token/帧),省 token 但小字/UI 数字会看不清")
     ap.add_argument("--start", type=float, help="只分析从这一秒开始的片段(长片分段看);报告里的时间从片段开头算")
     ap.add_argument("--end", type=float, help="片段结束秒")
+    ap.add_argument("--probe", action="store_true",
+                    help="不调 Gemini,只打印 JSON:时长、有没有音轨、有没有 Winky key、采样计划")
     a = ap.parse_args()
     if not os.path.isfile(a.video):
         print(f"错误: 找不到视频 {a.video}"); sys.exit(1)
+    if a.probe:
+        print(json.dumps(probe(a.video), ensure_ascii=False)); return
     prompt = None
     if a.prompt_file:
         with open(a.prompt_file, encoding="utf-8") as f:
