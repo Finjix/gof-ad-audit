@@ -24,20 +24,18 @@ dev/                                 开发专用，不进入发布包
   test_scripts.py                    脚本的自检
   package_plugin.mjs                 插件结构检查和打包
 docs/lark-agent-integration.md       放进 lark-agent
-install.ps1 / install.sh             Codex 桌面版一键安装
 ```
 
 ## 一、装插件
 
-Windows：在这个文件夹里打开 PowerShell，运行
+在这个文件夹里打开终端，运行
 
 ```
-powershell -ExecutionPolicy Bypass -File install.ps1
+codex plugin marketplace add .
+codex plugin add gof-ad-audit@gof-ad-audit
 ```
 
-Mac：在这个文件夹里打开终端，运行 `bash install.sh`
-
-两个脚本做的事一样：把这个文件夹登记成 Codex 的插件市场并安装 gof-ad-audit（`codex plugin marketplace add <这个文件夹>`、`codex plugin add gof-ad-audit@gof-ad-audit`）；旁边有 feishu 仓库时把 feishu 插件也装上；以前拷进 `~/.codex/skills/gof-ad-audit` 的旧版会移走备份（不然有两份同名技能）。装完重开 Codex 就能用。没有 `codex` 命令时，在 Codex 的插件设置里添加插件市场，选这个文件夹，再安装 gof-ad-audit。
+装完重开 Codex 就能用。没有 `codex` 命令时，在 Codex 的插件设置里添加插件市场，选这个文件夹，再安装 gof-ad-audit。读飞书文档还要装 [feishu 插件](https://github.com/Finjix/feishu-plugin)。
 
 lark-agent：见 [docs/lark-agent-integration.md](docs/lark-agent-integration.md)。
 
@@ -45,7 +43,7 @@ lark-agent：见 [docs/lark-agent-integration.md](docs/lark-agent-integration.md
 
 - Python 3.8 以上（Windows 上命令是 `python`）
 - ffmpeg（Mac：`brew install ffmpeg`；Windows：从 [ffmpeg.org 的下载页](https://ffmpeg.org/download.html) 进 Windows 构建（gyan.dev 的 `ffmpeg-release-essentials.zip`），解压到比如 `%LOCALAPPDATA%\Programs\ffmpeg`，把里面的 `bin` 加进用户环境变量 `Path`，重开终端后 `ffmpeg -version` 能出版本号就好）
-- 读飞书文档：[feishu 插件](https://github.com/Finjix/feishu)（Node.js 24+）。登录是它管的，用户用飞书手机端扫一次码，和其他插件共用
+- 读飞书文档：[feishu 插件](https://github.com/Finjix/feishu-plugin)（Node.js 24+）。登录是它管的，用户用飞书手机端扫一次码，和其他插件共用
 
 不需要装任何 Python 包。
 

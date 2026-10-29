@@ -13,7 +13,7 @@
   python3 feishu.py login poll                                     # 收登录
 
 找 feishu.mjs 的顺序和 feishu 插件 docs/for-plugins.md 一致：环境变量 FEISHU_PLUGIN（feishu.mjs 的绝对路径），
-否则从本文件往上逐级找并排的插件文件夹、Codex 插件缓存（同一个或别的 marketplace）、开发时并排的 feishu 仓库。
+否则从本文件往上逐级找并排的插件文件夹、Codex 插件缓存（同一个或别的 marketplace）、开发时并排的 feishu-plugin 仓库。
 依赖: Python 3.8+ 标准库 + Node.js 24+。
 """
 import json
@@ -62,7 +62,7 @@ def locate(env=os.environ, start=os.path.dirname(os.path.abspath(__file__))):
     here = start
     for _ in range(9):
         sibling = os.path.join(here, "feishu", ENTRY)                 # 并排的插件文件夹（lark-agent 的 plugins/）
-        dev = os.path.join(here, "feishu", "plugins", "feishu", ENTRY)  # 并排的 feishu 仓库
+        dev = os.path.join(here, "feishu-plugin", "plugins", "feishu", ENTRY)  # 并排的 feishu-plugin 仓库
         found = ((sibling if os.path.isfile(sibling) else None)
                  or _newest(os.path.join(here, "feishu"))                 # Codex 插件缓存，同一个 marketplace
                  or next(filter(None, (_newest(os.path.join(here, m, "feishu")) for m in _dirs(here))), None)  # 别的 marketplace
