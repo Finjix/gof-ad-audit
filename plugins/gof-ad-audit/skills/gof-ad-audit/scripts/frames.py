@@ -50,7 +50,7 @@ def main():
     a = ap.parse_args()
 
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
-        sys.exit("错误: 找不到 ffmpeg/ffprobe，先装（mac: brew install ffmpeg；Windows: winget install ffmpeg）")
+        sys.exit("错误: 找不到 ffmpeg/ffprobe，先装（mac: brew install ffmpeg；Windows: 从 ffmpeg.org 的 Windows 构建下载，把 bin 加进 PATH，见 README）")
     if not os.path.isfile(a.video):
         sys.exit(f"错误: 找不到视频 {a.video}")
 
