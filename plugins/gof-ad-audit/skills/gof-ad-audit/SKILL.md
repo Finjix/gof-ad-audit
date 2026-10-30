@@ -12,7 +12,7 @@ Talk to the user in their language (Chinese unless they write otherwise). Everyt
 ## Flow
 
 1. **Ask:** look at what was sent, work out what you can, and ask only what is still missing. The message is the numbered questions and nothing else (§1). Then **end the turn**: run nothing else and do not start the audit "in the meantime". lark-agent shows the task as running (番薯搬砖中) until the turn ends, so a question asked mid-turn leaves the user watching a spinner with nobody waiting for their answer.
-2. **Execute:** after the user's reply, run the whole audit to the end without asking again, then hand over the report. Use your judgement on errors: retry, re-login, fall back (no Winky key or network → frames only, and the report says what was not audited). Ask only when something only the user can do blocks the audit (a login scan, document permission, a file that will not open).
+2. **Execute:** after the user's reply, run the whole audit to the end without asking again, then hand over the report. Use your judgement on errors: retry, re-login, split a long video into stretches. Videos are always watched by Gemini through Winky, there is no frames-only audit: when Gemini cannot be reached (no Winky key, network refused), stop and say so. Ask only when something only the user can do blocks the audit (a login scan, document permission, a file that will not open).
 
 The user's reply is the go-ahead: an answer to the questions ("字节，APP，没有字幕"), "确认", "开始", "好" all count. Questions they leave unanswered get the defaults in §1, and the report's 审了什么 line says so. A reply that brings other or more material: ask again only if the new material leaves something missing, otherwise audit. A go-ahead counts only for questions you have already sent; messages that reach you mid-turn (lark-agent steers them in) are corrections or more material.
 
@@ -52,13 +52,13 @@ Work out first, from the message, file names and the material itself; ask only w
 
 | What | Where it usually comes from | Ask when |
 |---|---|---|
-| Material type (3D 玩法, 解说/迭代, 真人, AI, 明星) — picks the E section | the message; the file name (F1: `GOFCN编号_产出方_一级标签_…`, e.g. 真人剧情, AI); a quick look at a few frames | still unclear after that |
+| Material type (3D 玩法, 解说/迭代, 真人, AI, 明星) — picks the E section | the message; the file name (F1: `GOFCN编号_产出方_一级标签_…`, e.g. 真人剧情, AI); a quick look at a few frames | still unclear after that (default: every E section that could apply) |
 | Channels (字节/巨量, 腾讯, 星广) and 小程序 or APP — 星广 is stricter on A3/A4, C6 and F2 differ | the message, the file or folder name | not stated (default: all three channels, 小程序 and APP both) |
-| Original subtitle file or script (video only) — more accurate than the transcription, and the only source for 口播 without a Winky key or audio | sent with the video, a Feishu link | a video came without one |
+| Original subtitle file or script (video only) — more accurate than the transcription, and the only source for 口播 when the video has no audio track | sent with the video, a Feishu link | a video came without one |
 
 Cheap, read-only checks before asking (seconds, nothing sent out):
 
-- video: `python3 <skill>/scripts/analyze_video.py <视频> --probe` → `duration`, `audio`, `winky_key`. To tell the type, look at about 8 frames: `python3 <skill>/scripts/frames.py <视频> --fps <8 ÷ duration> --out <work>/peek`.
+- video: `python3 <skill>/scripts/analyze_video.py <视频> --probe` → `duration`, `audio`, `winky_key`. `winky_key: false`: ask nothing, reply only 「审视频要通过公司 Winky 调 Gemini，这台电脑还没配 Winky key。配好后再发给我。」 and end the turn. To tell the type, look at about 8 frames: `python3 <skill>/scripts/frames.py <视频> --fps <8 ÷ duration> --out <work>/peek`.
 - Feishu link: fetch it now (§2), so a login or permission problem is solved before the go-ahead.
 
 Several files or links in one message are one audit: one set of questions, one go-ahead, one report (a section per file; landscape and portrait versions of one number side by side).
@@ -70,7 +70,7 @@ The whole message, exactly in this shape (only the questions that apply):
 2. 有原始字幕文件或脚本吗？
 ```
 
-What could not be audited (no audio → 口播和音乐; no Winky key and no script → 口播和背景音乐) goes into the report's 没审 part, not into the questions.
+What could not be audited (no audio track → 口播和音乐) goes into the report's 没审 part, not into the questions.
 
 ## 2. Text: script pre-screen first
 
@@ -95,16 +95,16 @@ text_check only matches the literal text. Cover what it cannot yourself: homopho
 
 ## 3. Video: Gemini watches the whole piece, frames verify the details
 
-With a Winky key (see the package README.md), Gemini watches the whole video first, picture and sound together:
+Gemini, through the company proxy Winky, watches the whole video first, picture and sound together. This is required for every video (key setup: the package README.md):
 
 ```bash
-python3 <skill>/scripts/analyze_video.py <视频> --model gemini-4-argon --keep-audio \
-  --prompt-file <skill>/references/video_prompt.md > <work>/report.md
+python3 <skill>/scripts/analyze_video.py <视频> --model gemini-4-argon --keep-audio > <work>/report.md
 python3 <skill>/scripts/extract_srt.py <work>/report.md <work>/subs.srt
 python3 <skill>/scripts/text_check.py <work>/subs.srt
 ```
 
-- Needs network. The Codex sandbox has none by default: when the command is blocked, request approval, or have the user enable `network_access` in config.toml.
+- The prompt is `<skill>/references/video_prompt.md` (the default). The report goes to stdout, errors to stderr with a non-zero exit code: read them, do not look for them in report.md. Exit 5 (cut off or blocked): run it again, or in stretches with `--start/--end`, and put the stretches' transcriptions together.
+- Needs network. The Codex sandbox has none by default: when the command is blocked, request approval, or have the user enable `network_access` in config.toml. Refused: stop, the video cannot be audited without it.
 - report.md section 一 is the line-by-line transcription (字幕, 口播, 画面字), sections 二 to 四 the disclaimer, opening and end card, visual risks. Judge them against standard.md yourself.
 - If the project has an original subtitle file or script, run it through text_check too: it is more accurate than the transcription.
 - Gemini misses things and makes things up. Everything it reports as a visual problem, everything it marks 不确定, and every small text that must match exactly (disclaimer, temperature and power numbers, furnace level, gift codes) is verified on extracted frames with your own eyes before it goes into the report:
@@ -116,8 +116,6 @@ python3 <skill>/scripts/frames.py <视频> --start 40 --end 45 --crop 0,0,540,30
 ```
 
 The script prints the frame paths; open and look at each one. At most 60 frames per call. 3fps misses things shown for a few frames (measured: -64°c stayed 3 frames, 648k a single frame), so scan the suspicious second or two of any number at 30fps.
-
-Without a Winky key: `frames.py <视频> --fps 1 --out <work>/all` for the whole piece, then denser frames on suspicious stretches. There is no sound this way: 口播 and music depend on the project's subtitle file or script, and the report says 「口播、音乐没审」.
 
 ## 4. Images: covers, stills, screenshots, storyboards
 

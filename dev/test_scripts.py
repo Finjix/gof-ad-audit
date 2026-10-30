@@ -53,6 +53,36 @@ class TextCheck(unittest.TestCase):
                              text=True, encoding="utf-8", env=UTF8).stdout
         self.assertTrue(any(h["level"] == "必改" for h in json.loads(out)))
 
+    def check(self, name, content):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, name)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            return json.loads(run("text_check", "--json", path).stdout)
+
+    def test_a_subtitle_that_is_only_a_number_is_checked(self):
+        hits = self.check("a.srt", "1\n00:00:01,000 --> 00:00:02,000\n648\n\n2\n00:00:03,000 --> 00:00:04,000\n好\n")
+        self.assertIn(("648", "a.srt 00:00:01.000"), [(h["hit"], h["pos"]) for h in hits])
+
+    def test_every_occurrence_is_reported_with_its_own_time(self):
+        hits = self.check("a.srt", "1\n00:00:03,000 --> 00:00:04,000\n零氪也能玩\n\n2\n00:00:45,000 --> 00:00:46,000\n零氪也能玩\n")
+        self.assertEqual([h["pos"] for h in hits if h["hit"] == "零氪"], ["a.srt 00:00:03.000", "a.srt 00:00:45.000"])
+
+    def test_3d_and_2d_are_not_letters_standing_in_for_words(self):
+        hits = self.check("a.txt", "3D画面，2D角色\n")
+        self.assertFalse([h for h in hits if h["rule"] == "B1"])
+
+    def test_vtt_cues_without_hours_keep_their_time(self):
+        hits = self.check("a.vtt", "WEBVTT\n\nintro\n00:05.000 --> 00:06.000\n零氪\n")
+        self.assertEqual({h["pos"] for h in hits if h["rule"] == "B6"}, {"a.vtt 00:05.000"})
+        self.assertFalse([h for h in hits if h["hit"] in ("intro", "00:05.000")])
+
+    def test_missing_disclaimer_is_only_raised_for_subtitles(self):
+        out = subprocess.run([sys.executable, script("text_check"), "--json", "-"], input="冰雪求生", capture_output=True,
+                             text=True, encoding="utf-8", env=UTF8).stdout
+        self.assertFalse([h for h in json.loads(out) if h["rule"] == "C1"])
+        self.assertTrue([h for h in self.check("a.srt", "1\n00:00:01,000 --> 00:00:02,000\n冰雪求生\n") if h["rule"] == "C1"])
+
 
 class ExtractSrt(unittest.TestCase):
     def test_takes_the_srt_block_of_the_report(self):
@@ -78,6 +108,36 @@ class Sampling(unittest.TestCase):
         self.assertTrue(fps < 4 and 1800 * (fps * (258 if hi else 66) + 32) <= 700_000)
         self.assertFalse(plan(7200, None, None)[1], "very long ones fall back to low resolution")
         self.assertEqual(plan(None, None, None)[:2], (4, True))
+
+
+class Gemini(unittest.TestCase):
+    def setUp(self):
+        self.av = load("analyze_video")
+
+    def test_a_cut_off_or_blocked_answer_is_not_taken_as_the_report(self):
+        text = self.av.report_text
+        ok = {"candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "报告"}]}}]}
+        self.assertEqual(text(ok), "报告")
+        with self.assertRaisesRegex(self.av.Incomplete, "截断"):
+            text({"candidates": [{"finishReason": "MAX_TOKENS", "content": {"parts": [{"text": "半份"}]}}]})
+        with self.assertRaisesRegex(self.av.Incomplete, "PROHIBITED_CONTENT"):
+            text({"promptFeedback": {"blockReason": "PROHIBITED_CONTENT"}})
+
+    def test_the_claude_key_is_used_only_when_it_points_at_winky(self):
+        with tempfile.TemporaryDirectory() as d:
+            settings = os.path.join(d, "settings.json")
+            self.av.KEY_FILE, self.av.SETTINGS = os.path.join(d, "none"), settings
+            saved = os.environ.pop("WINKY_API_KEY", None)
+            try:
+                with open(settings, "w", encoding="utf-8") as f:
+                    json.dump({"env": {"ANTHROPIC_API_KEY": "real"}}, f)
+                self.assertIsNone(self.av.find_key())
+                with open(settings, "w", encoding="utf-8") as f:
+                    json.dump({"env": {"ANTHROPIC_API_KEY": "w", "ANTHROPIC_BASE_URL": "https://lumos.diandian.info/winky"}}, f)
+                self.assertEqual(self.av.find_key(), "w")
+            finally:
+                if saved is not None:
+                    os.environ["WINKY_API_KEY"] = saved
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "没有 ffmpeg")

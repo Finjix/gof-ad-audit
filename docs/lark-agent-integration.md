@@ -25,7 +25,7 @@ start.cmd
 |---|---|
 | 插件在 Codex 里的名字 | `gof-ad-audit@lark-agent`；技能 `gof-ad-audit:gof-ad-audit` |
 | 运行环境 | 机器人那台电脑的 Python 3.8+（`python`）、ffmpeg/ffprobe 在服务进程的 `PATH` 上（装好后要重启 lark-agent，新 `PATH` 才进得了服务进程）、Node.js 24+（feishu 插件） |
-| Winky key | 运行机器人的 Windows 账号的 `~/.config/winky/key`，所有用户共用。没有就只抽帧看画面，报告里写明口播和音乐没审 |
+| Winky key | 运行机器人的 Windows 账号的 `~/.config/winky/key`，所有用户共用。审视频必须有：没有的话机器人直接回复还没配 key，不审 |
 | 飞书 | `scripts/feishu.py` 找到 feishu 插件（Codex 插件缓存里同一个 marketplace 的 `feishu/<版本>/server/dist/feishu.mjs`）并用 `node` 原样运行；子进程继承宿主每轮给的 `LARK_AGENT_USER_DIR`、`LARK_AGENT_USER_OPEN_ID`、`FEISHU_APP_ID`、`FEISHU_APP_SECRET`，所以是这个用户自己的飞书登录（`user/<名>/feishu/`），和 requirement-auto 共用 |
 | 数据位置 | 工作文件在 `user/<名>/gof-ad-audit/work/<时间>_<片名>/`（`scripts/workdir.py`），7 天没动过的在下次审核时删掉。不放在 `workspace/`：lark-agent 会把工作目录里新出现的文件都发给用户 |
 | 交付 | 审核结论写在回复里；飞书登录二维码写在工作目录，随回复发给用户 |

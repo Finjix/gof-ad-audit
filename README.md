@@ -47,9 +47,9 @@ lark-agent：见 [docs/lark-agent-integration.md](docs/lark-agent-integration.md
 
 不需要装任何 Python 包。
 
-## 三、Winky key（审视频强烈建议配）
+## 三、Winky key（审视频必须配）
 
-审视频时插件会调公司 Winky 上的 Gemini 看整条片子，它能听口播和背景音乐。没有 key 也能用，只是只能抽帧看画面，听不到声音。
+审视频时插件会调公司 Winky 上的 Gemini 看整条片子，画面、口播和背景音乐一起看。没有 key 就审不了视频，它会直接告诉你还没配 key；文案、字幕、图片和飞书脚本不受影响。
 
 配法：把自己的 Winky（lumos）key 写进一个文件，只写一行
 

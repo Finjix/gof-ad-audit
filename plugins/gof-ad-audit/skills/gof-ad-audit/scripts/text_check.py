@@ -112,13 +112,15 @@ def read_units(path):
     out = []
     if suffix in (".srt", ".vtt"):
         t = None
-        for i, line in enumerate(raw.splitlines(), 1):
-            line = line.strip()
-            m = re.match(r"(\d+:\d+:\d+[,.]\d+)\s*-->", line)
+        lines = [line.strip() for line in raw.splitlines()]
+        cue = re.compile(r"((?:\d+:)?\d+:\d+[,.]\d+)\s*-->")  # VTT 可以没有小时：00:05.000 -->
+        for i, line in enumerate(lines):
+            m = cue.match(line)
             if m:
                 t = m.group(1).replace(",", ".")
-            elif line and not line.isdigit() and line != "WEBVTT":
-                out.append((f"{name} {t or i}", re.sub(r"<[^>]+>", "", line)))
+            # 时间码上一行是序号（VTT 里也可能是别的标识），不是字幕；只有数字的字幕（648）照样要查
+            elif line and not (i + 1 < len(lines) and cue.match(lines[i + 1])) and not line.startswith("WEBVTT"):
+                out.append((f"{name} {t or i + 1}", re.sub(r"<[^>]+>", "", line)))
     elif suffix == ".ass":
         for line in raw.splitlines():
             if line.startswith("Dialogue:"):
@@ -141,7 +143,7 @@ def check_english(text):
         after = text[e:].lstrip(" \u3000")[:1]
         cjk_b = bool(re.match(r"[一-鿿]", before))
         cjk_a = bool(re.match(r"[一-鿿]", after))
-        if tok.upper() in EN_OK or (tok in ("A", "B") and after and after in "面段版"):
+        if tok.upper() in EN_OK or (tok in ("A", "B") and after and after in "面段版") or (tok in ("D", "d") and text[s - 1:s].isdigit()):
             continue
         if re.match(r"\d{3}", text[e:e + 3]):
             hits.append(("B2", "必改", tok + text[e:e + 3], "礼包码、人名用字母代替，改成中文加数字，如林子聪666"))
@@ -237,7 +239,8 @@ def has_pw(t):
     return "战力" in t
 
 
-def scan(units):
+def scan(units, subtitles=False):
+    """subtitles：输入里有字幕文件。只有这时才提醒没找到提示语，单句文案、标题没有提示语是正常的。"""
     found, seen = [], set()
     full = "".join(t for _, t in units)
     for i, (pos, text) in enumerate(units):
@@ -250,7 +253,7 @@ def scan(units):
                 hits.append((rid, lvl, m.group(), note))
         hits += check_english(text)
         for h in hits:
-            key = (h[0], h[2])
+            key = (h[0], h[2], pos)  # 同一个写法出现几次就报几次，每处都要改
             if key in seen:
                 continue
             seen.add(key)
@@ -259,7 +262,7 @@ def scan(units):
     if TIP not in re.sub(r"\s", "", full).replace("需达到", "须达到") and "出发相应模块" not in full:
         if "广告创意仅供参考" in full:
             found.append({"rule": "C1", "level": "必改", "pos": "全文", "hit": "提示语", "note": "提示语和原文不一致，照 standard.md C1 原文改", "text": ""})
-        else:
+        elif subtitles:
             found.append({"rule": "C1", "level": "提醒", "pos": "全文", "hit": "提示语", "note": "文字里没找到提示语；涉及玩法的素材要在画面中下加上", "text": ""})
     found.sort(key=lambda f: LEVELS.index(f["level"]))
     return found
@@ -276,7 +279,7 @@ def main():
     units = []
     for f in args.files:
         units += read_units(f)
-    found = scan(units)
+    found = scan(units, any(Path(f).suffix.lower() in (".srt", ".vtt", ".ass") for f in args.files if f != "-"))
     if args.json:
         print(json.dumps(found, ensure_ascii=False, indent=1))
         return
