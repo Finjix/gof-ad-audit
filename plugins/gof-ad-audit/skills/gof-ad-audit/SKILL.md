@@ -1,30 +1,31 @@
 ---
 name: gof-ad-audit
-description: "Pre-submission compliance audit (送审前审核) of 无尽冬日 (GOF / GOFCN) domestic user-acquisition ad materials against the 2026-10-21 audit standard (红线, 字幕口播, 画面界面, 游戏数值, rules per material type, 命名交付): will ByteDance (字节/巨量), Tencent (腾讯) or 星广 reject it, where (timecode or line), and the exact fix. Use for 审素材 / 能不能过审 / 送审前自查 / 检查字幕口播脚本文案标题封面 / 分析拒审原因 / GOF or GOFCN materials before delivery. Takes videos, subtitle files, copy, images and Feishu documents. Compliance only, not creative quality. Asks only what cannot be worked out, shows one short audit plan, and once the user replies runs the whole audit to the end."
+description: "Pre-submission compliance audit (送审前审核) of 无尽冬日 (GOF / GOFCN) domestic user-acquisition ad materials against the 2026-10-21 audit standard (红线, 字幕口播, 画面界面, 游戏数值, rules per material type, 命名交付): will ByteDance (字节/巨量), Tencent (腾讯) or 星广 reject it, where (timecode or line), and the exact fix. Use for 审素材 / 能不能过审 / 送审前自查 / 检查字幕口播脚本文案标题封面 / 分析拒审原因 / GOF or GOFCN materials before delivery. Takes videos, subtitle files, copy, images and Feishu documents. Compliance only, not creative quality. Asks only what cannot be worked out (just the questions, nothing else), and once the user replies runs the whole audit to the end."
 ---
 
 # 无尽冬日素材审核 (GOF ad compliance audit)
 
-Talk to the user in their language (Chinese unless they write otherwise). Everything the user sees stays Chinese: questions, the plan, progress lines, the report, rule names and quoted wording.
+Talk to the user in their language (Chinese unless they write otherwise). Everything the user sees stays Chinese: questions, progress lines, the report, rule names and quoted wording.
 
 `<skill>` is the directory of this SKILL.md. On Windows use `python` instead of `python3`.
 
 ## Flow
 
-1. **Plan:** look at what was sent, work out what you can, ask only what is still missing, and show one short audit plan in the same message. Then **end the turn**: run nothing else and do not start the audit "in the meantime". lark-agent shows the task as running (番薯搬砖中) until the turn ends, so a question asked mid-turn leaves the user watching a spinner with nobody waiting for their answer.
+1. **Ask:** look at what was sent, work out what you can, and ask only what is still missing. The message is the numbered questions and nothing else (§1). Then **end the turn**: run nothing else and do not start the audit "in the meantime". lark-agent shows the task as running (番薯搬砖中) until the turn ends, so a question asked mid-turn leaves the user watching a spinner with nobody waiting for their answer.
 2. **Execute:** after the user's reply, run the whole audit to the end without asking again, then hand over the report. Use your judgement on errors: retry, re-login, fall back (no Winky key or network → frames only, and the report says what was not audited). Ask only when something only the user can do blocks the audit (a login scan, document permission, a file that will not open).
 
-The user's reply is the go-ahead: an answer to the questions ("字节，APP，没有字幕"), "确认", "开始", "好" all count. Questions they leave unanswered keep what the plan assumed. A reply that changes *what* is audited (other or more files, a different link): plan again and show it again. A go-ahead counts only for a plan you have already shown; messages that reach you mid-turn (lark-agent steers them in) are corrections or more material.
+The user's reply is the go-ahead: an answer to the questions ("字节，APP，没有字幕"), "确认", "开始", "好" all count. Questions they leave unanswered get the defaults in §1, and the report's 审了什么 line says so. A reply that brings other or more material: ask again only if the new material leaves something missing, otherwise audit. A go-ahead counts only for questions you have already sent; messages that reach you mid-turn (lark-agent steers them in) are corrections or more material.
 
-**No plan needed** (audit in the same turn):
+**No questions** (audit in the same turn):
+- nothing is missing;
 - a few lines of copy pasted into the message (a title, a sentence, a short script): run text_check and answer;
-- the user says to skip the questions (直接审, 不用问): audit for all channels and say so in the report's 审了什么 line.
+- the user says to skip the questions (直接审, 不用问): use the defaults.
 
 ## Talking to the user
 
-Short and plain, business language only. While planning, say nothing until you have the questions and the plan. While executing, at most one short line per stage ("正在看整条视频", "正在逐帧核对数字和提示语"); findings go into the report only, never as progress lines ("抽帧已确认：…"). Never mention the skill, its files, scripts, models or rules ("我会使用 gof-ad-audit 技能", "按 SKILL.md…"); never describe how you are going to work; never echo the user's answer back. Leave out internals (paths, JSON, token counts, sampling rates) unless asked. When something stops: what is done, what is not, what the user must do, and the concrete reason.
+Short and plain, business language only. While working out the questions, say nothing until you have them. While executing, at most one short line per stage ("正在看整条视频", "正在逐帧核对数字和提示语"); findings go into the report only, never as progress lines ("抽帧已确认：…"). Never mention the skill, its files, scripts, models or rules ("我会使用 gof-ad-audit 技能", "按 SKILL.md…"); never describe how you are going to work; never echo the user's answer back. Leave out internals (paths, JSON, token counts, sampling rates) unless asked. When something stops: what is done, what is not, what the user must do, and the concrete reason.
 
-**Questions:** only what is missing and changes the audit, as plain numbered questions. No conditions, defaults or instructions inside a question ("如未提供则…", "如不需要请告知"): the assumption goes into the plan line instead.
+**Questions:** only what is missing and changes the audit, as plain numbered questions; when the answer is a choice, list the choices. No conditions, defaults or instructions inside a question ("如未提供则…", "如不需要请告知"), and nothing around the questions: no opening line, no plan or summary of the material, no "回复…即可", no explanation of why you ask.
 
 ## Files
 
@@ -45,41 +46,31 @@ Settled wordings (2026-10-21, owner 汤泽洋). Do not change them; a new wordin
 
 The standard is maintained centrally: never edit the local copy. New rejection cases go to the owner, who updates and redistributes it.
 
-## 1. Plan
+## 1. Questions
 
 Work out first, from the message, file names and the material itself; ask only what is left:
 
 | What | Where it usually comes from | Ask when |
 |---|---|---|
 | Material type (3D 玩法, 解说/迭代, 真人, AI, 明星) — picks the E section | the message; the file name (F1: `GOFCN编号_产出方_一级标签_…`, e.g. 真人剧情, AI); a quick look at a few frames | still unclear after that |
-| Channels (字节/巨量, 腾讯, 星广) and 小程序 or APP — 星广 is stricter on A3/A4, C6 and F2 differ | the message, the file or folder name | not stated (plan assumes all channels, 小程序 and APP both) |
+| Channels (字节/巨量, 腾讯, 星广) and 小程序 or APP — 星广 is stricter on A3/A4, C6 and F2 differ | the message, the file or folder name | not stated (default: all three channels, 小程序 and APP both) |
 | Original subtitle file or script (video only) — more accurate than the transcription, and the only source for 口播 without a Winky key or audio | sent with the video, a Feishu link | a video came without one |
 
-Cheap, read-only checks before the plan (seconds, nothing sent out):
+Cheap, read-only checks before asking (seconds, nothing sent out):
 
 - video: `python3 <skill>/scripts/analyze_video.py <视频> --probe` → `duration`, `audio`, `winky_key`. To tell the type, look at about 8 frames: `python3 <skill>/scripts/frames.py <视频> --fps <8 ÷ duration> --out <work>/peek`.
-- Feishu link: fetch it now (§2), so the plan can name the document and tab and a login or permission problem is solved before the go-ahead.
+- Feishu link: fetch it now (§2), so a login or permission problem is solved before the go-ahead.
 
-Several files or links in one message are one audit: one plan, one go-ahead, one report (a section per file; landscape and portrait versions of one number side by side).
+Several files or links in one message are one audit: one set of questions, one go-ahead, one report (a section per file; landscape and portrait versions of one number side by side).
 
-The message, in this shape (leave out the 要确认的 part when nothing is missing):
+The whole message, exactly in this shape (only the questions that apply):
 
 ```
-要确认的：
-1. 投哪些渠道？小程序还是 APP？
+1. 投哪些渠道：字节（巨量）、腾讯、星广？小程序还是 APP？
 2. 有原始字幕文件或脚本吗？
-
-审核计划：
-- 素材：GOFCN67680_真人剧情_xx.mp4（1分32秒，竖版，有声音）
-- 类型：真人剧情（来自文件名）
-- 渠道：未定，按字节、腾讯、星广全部渠道审
-- 看什么：画面、字幕、口播逐条转写，提示语和数字逐帧核对
-- 对照 2026-10-21 审核标准 A–F 逐类过，出带时间码的问题清单和改法
-
-确认后我就开始审核。
 ```
 
-Plan lines that change what can be audited: no Winky key → 「看什么：只看画面，口播和背景音乐审不了」 and ask for the subtitle file or script; no audio track → 「视频没有声音，口播和音乐不审」; a Feishu document → 「脚本：飞书文档《标题》，页签 X，N 行」.
+What could not be audited (no audio → 口播和音乐; no Winky key and no script → 口播和背景音乐) goes into the report's 没审 part, not into the questions.
 
 ## 2. Text: script pre-screen first
 
